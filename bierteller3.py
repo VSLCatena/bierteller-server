@@ -10,7 +10,7 @@ from decimal import *
 getcontext().prec = 1
 
 import csv
-import MySQLdb 
+import MySQLdb
 
 # Import setting from settings.cfg
 #[mysqldb]
@@ -37,7 +37,7 @@ retrieve = "SELECT tap1, tap2, tap3, tap4, dtap1, dtap2, dtap3, dtap4 FROM log O
 
 
 #initieer serieel	
-ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=2)
+ser = serial.Serial('/dev/ttyUSB0', 19200, timeout=2)
 #ser.close()
 
 #Interval
@@ -54,7 +54,7 @@ start = 0 #negeer de eerste keer boven de 3.5
 while True:
 	
 	#SQL-database previous value
-	cursor.execute(retrieve) 
+	cursor.execute(retrieve)
 	result = cursor.fetchone()
 	tap1vorig = round(result[0],1)
 	tap2vorig = round(result[1],1)
@@ -73,70 +73,32 @@ while True:
 	local = csv.writer(open("database.csv", "ab"))
 	
 	#seriele data
-	#a = ser.open()
-	ser.flushInput() #reset_input_buffer()
-	ser.flushOutput() #reset_output_buffer()
+	time.sleep(5)	
 	ts = time.time()
 	st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-		#write 'a' to buffer
-	x = ser.write("a")
-		#sleep for delay		
-	time.sleep(.3)	
-		#It gets a 27byte back. (00000110 x 27 )
 	
-	#serdata = ser.read(size=27)
-	#splitserdata =[serdata[8*i:8*(i+1)] for i in xrange(len(serdata)//8)]
-	
-	a = ser.read(size=1)
-	b = ser.read(size=1)
-	c = ser.read(size=1)
-	d = ser.read(size=1)
-	e = ser.read(size=1)
-	f = ser.read(size=1)
-	g = ser.read(size=1)
-	h = ser.read(size=1)
-	i = ser.read(size=1)
-	j = ser.read(size=1)
-	k = ser.read(size=1)
-	l = ser.read(size=1)
-	rest = ser.read(size=15)
-	ser.flush()
-	
-	# teller1h = binascii.b2a_hex(splitserdata[0])
-	# teller1m = binascii.b2a_hex(splitserdata[1])
-	# teller1l = binascii.b2a_hex(splitserdata[2])
-	# teller2h = binascii.b2a_hex(splitserdata[3])
-	# teller2m = binascii.b2a_hex(splitserdata[4])
-	# teller2l = binascii.b2a_hex(splitserdata[5])
-	# teller3h = binascii.b2a_hex(splitserdata[6])
-	# teller3m = binascii.b2a_hex(splitserdata[7])
-	# teller3l = binascii.b2a_hex(splitserdata[8])
-	# teller4h = binascii.b2a_hex(splitserdata[9])
-	# teller4m = binascii.b2a_hex(splitserdata[10])
-	# teller4l = binascii.b2a_hex(splitserdata[11])
-	#12-26 not used
-	ser.flush()
-	
-	teller1h = binascii.b2a_hex(a)
-	teller1m = binascii.b2a_hex(b)
-	teller1l = binascii.b2a_hex(c)
-	teller2h = binascii.b2a_hex(d)
-	teller2m = binascii.b2a_hex(e)
-	teller2l = binascii.b2a_hex(f)
-	teller3h = binascii.b2a_hex(g)
-	teller3m = binascii.b2a_hex(h)
-	teller3l = binascii.b2a_hex(i)
-	teller4h = binascii.b2a_hex(j)
-	teller4m = binascii.b2a_hex(k)
-	teller4l = binascii.b2a_hex(l)
-	tap1u = int(teller1h, 16) + (int(teller1m, 16)*256) + (int(teller1l, 16)*256*256)
-	tap1 = round(tap1u,1)/10
-	tap2u = int(teller2h, 16) + (int(teller2m, 16)*256) + (int(teller2l, 16)*256*256)
-	tap2 = round(tap2u,1)/10
-	tap3u = int(teller3h, 16) + (int(teller3m, 16)*256) + (int(teller3l, 16)*256*256)
-	tap3 = round(tap3u,1)/10
-	tap4u = int(teller4h, 16) + (int(teller4m, 16)*256) + (int(teller4l, 16)*256*256)
-	tap4 = round(tap4u,1)/10
+	ser_cor=-1
+	while (ser_cor <0):
+		ser_raw = ser.read(size=4056) #laad de hele buffer in
+		time.sleep(2) #het kost tijd
+		ser_cor=ser_raw.find("\r\nAT+SCASTB:22") #zoek deze terugkerende tekst op.
+		print ser_cor
+	#if cor = -1: ser.reset_input_buffer() Wait(1)
+	ser_split =[ser_raw[52*i+ser_cor+i:(i+1)*52+ser_cor] for i in xrange(len(ser_raw)//51)] #split de seriele data vanaf de eerste 'tekst' en split dat door 52
+	ser_short= [ser_split[i][17:25] for i in xrange(len(ser_split))]
+	#haal hier de bier
+	ser_1_split=[ser_short[0][i:(i+1)] for i in xrange(len(ser_short[0]))]
+	int_1_split=[ord(x) for x in ser_1_split]
+	bierdata=[int_1_split[x]+int_1_split[x+1]*256 for x in xrange(0,8,2)]
+	#
+	# data in low,hi 17-25
+	#'\r\nAT+SCASTB:22\rt0-\x02\xb6\x03@\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n'
+	#0-51
+
+	tap1 = round(bierdata[0],1)/10
+	tap2 = round(bierdata[1],1)/10
+	tap3 = round(bierdata[2],1)/10
+	tap4 = round(bierdata[3],1)/10
 
 	#mutaties
 	sub = tap1 + tap2 + tap3
@@ -150,7 +112,7 @@ while True:
 	
 	#print in terminal
 	print "Huidige absolute waarden (Serial):"
-	print a, "\n", st
+	print "\n", st
 	print "Tap 1: ",tap1,"L","\n","Tap 2: ", tap2,"L","\n","Tap 3: ", tap3,"L","\n","Tap 4: ", tap4,"L","\n","Soos-totaal: ", sub,"L","\n", "Totaal:", totaal, "L","\n"	
 	print "Deltawaarden:"
 	print "dtap 1: ",dtap1,"L","\n","dtap 2: ",dtap2,"L","\n","dtap 3: ",dtap3,"L","\n","dtap 4: ",dtap4,"L","\n",
@@ -193,3 +155,6 @@ while True:
 	
 cursor.close()
 db.close()
+
+
+#example '\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0
