@@ -27,13 +27,6 @@ db_pw = config.get('mysqldb', 'password')
 db_db = config.get('mysqldb', 'database')
 
 ####BODY
-print "Verbinden met SQL + CSV"
-#initeer database
-db = MySQLdb.connect(host=db_host,port=db_port,user=db_user,passwd=db_pw,db=db_db)
-cursor = db.cursor()
-retrieve = "SELECT tap1, tap2, tap3, tap4, dtap1, dtap2, dtap3, dtap4 FROM log ORDER BY tijd DESC LIMIT 1"
-#	tijd 	  			 	tap1 	tap2 	tap3 	tap4  dtap1 dtap2 dtap3 dtap4
-#	2016-04-16 03:33:54 	1345.2 	876.1 	1829.6 	38.3 	
 
 
 #initieer serieel	
@@ -43,6 +36,7 @@ ser = serial.Serial('/dev/ttyS0', 19200, timeout=2)
 #Interval
 interval = 0 
 reset_nobeer = 60 #Na laatste afname, per uur uploaden ipv per minuut
+time_check = 60 #wat is het interval van de seriele poort checken en uploaden. 
 start = 0 #negeer de eerste keer boven de 3.5
 
 
@@ -52,6 +46,18 @@ start = 0 #negeer de eerste keer boven de 3.5
 	# bierteller()
 	# time.sleep(60)
 while True:
+	
+	print "Verbinden met SQL + CSV"
+	#initeer database
+	db = MySQLdb.connect(host=db_host,port=db_port,user=db_user,passwd=db_pw,db=db_db)
+	cursor = db.cursor()
+	retrieve = "SELECT tap1, tap2, tap3, tap4, dtap1, dtap2, dtap3, dtap4 FROM log ORDER BY tijd DESC LIMIT 1"
+	#	tijd 	  			 	tap1 	tap2 	tap3 	tap4  dtap1 dtap2 dtap3 dtap4
+	#	2016-04-16 03:33:54 	1345.2 	876.1 	1829.6 	38.3 	
+
+	
+	
+	
 	
 	#SQL-database previous value
 	cursor.execute(retrieve)
@@ -77,84 +83,91 @@ while True:
 	ts = time.time()
 	st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 	
-	ser_cor=-1
-	while (ser_cor <0):
-		ser_raw = ser.read(size=4056) #laad de hele buffer in
-		time.sleep(2) #het kost tijd
+	ser_cor=-1 #positie van header, en dus correctiefactor
+	ser_cor_t=0 #aantal keer door correctieloop
+	while (ser_cor <0) and (ser_cor_t<6): #zoeken naar de correctiefactor
+		buffersize=ser.inWaiting()
+		ser_raw = ser.read(size=buffersize) #laad de hele buffer in
+		time.sleep(5) #het kost tijd
 		ser_cor=ser_raw.find("\r\nAT+SCASTB:22") #zoek deze terugkerende tekst op.
-		print ser_cor
-	#if cor = -1: ser.reset_input_buffer() Wait(1)
-	ser_split =[ser_raw[52*i+ser_cor+i:(i+1)*52+ser_cor] for i in xrange(len(ser_raw)//51)] #split de seriele data vanaf de eerste 'tekst' en split dat door 52
-	ser_short= [ser_split[i][17:25] for i in xrange(len(ser_split))]
-	#haal hier de bier
-	ser_1_split=[ser_short[0][i:(i+1)] for i in xrange(len(ser_short[0]))]
-	int_1_split=[ord(x) for x in ser_1_split]
-	bierdata=[int_1_split[x]+int_1_split[x+1]*256 for x in xrange(0,8,2)]
-	#
-	# data in low,hi 17-25
-	#'\r\nAT+SCASTB:22\rt0-\x02\xb6\x03@\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n'
-	#0-51
-
-	tap1 = round(bierdata[0],1)/10
-	tap2 = round(bierdata[1],1)/10
-	tap3 = round(bierdata[2],1)/10
-	tap4 = round(bierdata[3],1)/10
-
-	#mutaties
-	sub = tap1 + tap2 + tap3
-	totaal = tap1 + tap2 + tap3 + tap4
-	
-	dtap1 = tap1 - tap1vorig
-	dtap2 = tap2 - tap2vorig
-	dtap3 = tap3 - tap3vorig
-	dtap4 = tap4 - tap4vorig
-	dtotaal = dtap1 + dtap2 + dtap3 + dtap4
-	
-	#print in terminal
-	print "Huidige absolute waarden (Serial):"
-	print "\n", st
-	print "Tap 1: ",tap1,"L","\n","Tap 2: ", tap2,"L","\n","Tap 3: ", tap3,"L","\n","Tap 4: ", tap4,"L","\n","Soos-totaal: ", sub,"L","\n", "Totaal:", totaal, "L","\n"	
-	print "Deltawaarden:"
-	print "dtap 1: ",dtap1,"L","\n","dtap 2: ",dtap2,"L","\n","dtap 3: ",dtap3,"L","\n","dtap 4: ",dtap4,"L","\n",
-	
-	#the checks
-	
-	#geen bier getapt in afgelopen minuut
-	if (dtotaal == 0 and interval < reset_nobeer and start !=0): 
-		interval +=1
-		print "geen verandering, %d/%d" % (interval, reset_nobeer)
-	
-	#normaal werkend  (1x per minuut)
-		#SQL
-	if (dtotaal > 0 and dtotaal <3.5) or (interval==reset_nobeer) or (start == 0): 
-		cursor.execute( "INSERT INTO log VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (st, tap1, tap2, tap3, tap4, sub, totaal, dtap1, dtap2, dtap3, dtap4) )
-		db.commit()
-		#VERANDER STRINGS NAAR NUMBERS!!!!!
+		ser_cor_t += 1
+		print "%d (%d) size:%d" % (ser_cor, ser_cor_t,buffersize)
 		
-		#CSV
-		local.writerow([st, tap1, tap2, tap3, tap4, sub, totaal, dtap1, dtap2, dtap3, dtap4, dtotaal])
-		#local.close()
+	if (ser_cor_t != 6): # niet-6 is dat hij iets gevonden heeft in de buffer van de tekst.	
+		ser_split =[ser_raw[52*i+ser_cor+i:(i+1)*52+ser_cor] for i in xrange(len(ser_raw)//51)] #split de seriele data vanaf de eerste 'tekst' en split dat door 52
+		ser_short= [ser_split[i][17:25] for i in xrange(len(ser_split))] #haalt alleen de relevante bytes eruit
+		ser_1_split=[ser_short[0][i:(i+1)] for i in xrange(len(ser_short[0]))] #split de eerste bytes en maakt er een list van
+		int_1_split=[ord(x) for x in ser_1_split] #zet bytes om in integer
+		bierdata=[int_1_split[x]+int_1_split[x+1]*256 for x in xrange(0,8,2)] #zet de integers om in bierdata
+		#
+		# data in low,hi 17-25
+		#'\r\nAT+SCASTB:22\rt0-\x02\xb6\x03@\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n'
+		#0-51
+
+		tap1 = round(bierdata[0],1)/10
+		tap2 = round(bierdata[1],1)/10
+		tap3 = round(bierdata[2],1)/10
+		tap4 = round(bierdata[3],1)/10
+
+		#mutaties
+		sub = tap1 + tap2 + tap3
+		totaal = tap1 + tap2 + tap3 + tap4
 		
-		print "upload + interval=0"
-		interval = 0
+		dtap1 = tap1 - tap1vorig
+		dtap2 = tap2 - tap2vorig
+		dtap3 = tap3 - tap3vorig
+		dtap4 = tap4 - tap4vorig
+		dtotaal = dtap1 + dtap2 + dtap3 + dtap4
 		
-	#fout in bierteller (geef foutmelding door)		
-	if (dtotaal < 0): 
-		db.rollback()
-		print "geen upload. Fout <0"
+		#print in terminal
+		print "Huidige absolute waarden (Serial):"
+		print "\n", st
+		print "Tap 1: ",tap1,"L","\n","Tap 2: ", tap2,"L","\n","Tap 3: ", tap3,"L","\n","Tap 4: ", tap4,"L","\n","Soos-totaal: ", sub,"L","\n", "Totaal:", totaal, "L","\n"	
+		print "Deltawaarden:"
+		print "dtap 1: ",dtap1,"L","\n","dtap 2: ",dtap2,"L","\n","dtap 3: ",dtap3,"L","\n","dtap 4: ",dtap4,"L","\n",
 		
-	#fout in bierteller (geef foutmelding door)	
-	if (dtotaal  > 3.5) and (start !=0): 
-		db.rollback()
-		print "geen upload. Fout >3.5"
+		#the checks
+		
+		#geen bier getapt in afgelopen minuut
+		if (dtotaal == 0 and interval < reset_nobeer and start !=0): 
+			interval +=1
+			print "geen verandering, %d/%d" % (interval, reset_nobeer)
+		
+		#normaal werkend  (1x per minuut)
+			#SQL
+		if (dtotaal > 0 and dtotaal <3.5) or (interval==reset_nobeer) or (start == 0): 
+			cursor.execute( "INSERT INTO log VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (st, tap1, tap2, tap3, tap4, sub, totaal, dtap1, dtap2, dtap3, dtap4) )
+			db.commit()
+			#VERANDER STRINGS NAAR NUMBERS!!!!!
+			
+			#CSV
+			local.writerow([st, tap1, tap2, tap3, tap4, sub, totaal, dtap1, dtap2, dtap3, dtap4, dtotaal])
+			#local.close()
+			
+			print "upload + interval=0"
+			interval = 0
+			
+		#fout in bierteller (geef foutmelding door)		
+		if (dtotaal < 0): 
+			db.rollback()
+			print "geen upload. Fout <0"
+			
+		#fout in bierteller (geef foutmelding door)	
+		if (dtotaal  > 3.5) and (start !=0): 
+			db.rollback()
+			print "geen upload. Fout >3.5"
+		
+		start = 1 #first round 
+		#ser.close()
+		print "\n", "---"
+		
+	cursor.close()
+	db.close()	
 	
-	start = 1 #first round 
-	#ser.close()
-	print "\n", "---"
-	time.sleep(60)
+	waittime=(time_check-(ser_cor_t*5)-5) #60 - (5x correctieinterval ) - 5
+	time.sleep(waittime)
 	
-cursor.close()
-db.close()
 
 
-#example '\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0
+
+# '\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0
