@@ -37,7 +37,7 @@ retrieve = "SELECT tap1, tap2, tap3, tap4, dtap1, dtap2, dtap3, dtap4 FROM log O
 
 
 #initieer serieel	
-ser = serial.Serial('/dev/ttyUSB0', 19200, timeout=2)
+ser = serial.Serial('/dev/ttyS0', 19200, timeout=2)
 #ser.close()
 
 #Interval
