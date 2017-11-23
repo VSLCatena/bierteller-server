@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #
-#Version 2.0
+#Version 2.1
 #
-#Rewritten code, made functions, error exceptions, integer, english, timestamps, new way to find correction factor, rewritten decode (error was in previous)
+#fixed hostname errors
 #
 #HEADER/Import
 import serial
@@ -71,11 +71,13 @@ def database_read():
   dtap3vorig = result[6]
   dtap4vorig = result[7]
   info = "{}({}) {}({}) {}({}) {}({})".format(tap1vorig,dtap1vorig,tap2vorig,dtap2vorig,tap3vorig,dtap3vorig,tap4vorig,dtap4vorig)
-  timestamp("Connected. Previous values from SQL: "+info)	
-  
- except Exception as e:
-  print("Error:"+str(e)) 
- return tap1vorig, tap2vorig, tap3vorig, tap4vorig, dtap1vorig, dtap2vorig, dtap3vorig, dtap4vorig
+  timestamp("Connected. Previous values from SQL: "+info)
+  data= tap1vorig, tap2vorig, tap3vorig, tap4vorig, dtap1vorig, dtap2vorig, dtap3vorig, dtap4vorig 
+  return(True,data)
+ except MySQLdb.OperationalError as e: #Error while connecting to host.
+  timestamp("Error: "+str(e[1]))
+  return(False,str(e[1]))  
+
  
 def database_write(rollback=0):
  try:
@@ -90,8 +92,8 @@ def database_write(rollback=0):
    cursor.close()
    db.close()
    timestamp("Written to SQL-database")
- except Exception as e:
-  timestamp(str(e))
+ except MySQLdb.OperationalError as e: #Error while connecting to host.
+  timestamp("Error: "+str(e[1]))
 
  
 def csv_write():
@@ -124,10 +126,13 @@ def serial_read():
    
    ser_cor_t += 1 #try again
    print "pos({}) try:({}) size:{}".format(ser_cor, ser_cor_t,buffersize)
+  data = ser_raw,ser_cor_list,ser_cor_t
+  return(True,data)
  except Exception as e:
   timestamp("Error while reading: \n"+str(e))
- print("")
- return ser_raw,ser_cor_list,ser_cor_t
+  return(False,str(e))
+ finally:
+  print("") #newline
 		
 		
 def serial_decode(ser_raw,ser_cor_list):
@@ -141,7 +146,7 @@ def serial_decode(ser_raw,ser_cor_list):
  bierdata=[]
  
  ser_split =[ser_raw[ser_cor_list[i]:ser_cor_list[i]+50] for i in xrange(len(ser_cor_list))] #split serial data at each HEADER-text
- ser_len = len(ser_split) #amount of substrings of "\r\nAT ... \r\n"
+ ser_len = 1 #len(ser_split) #amount of substrings of "\r\nAT ... \r\n"
  ser_short= [ser_split[i][17:25] for i in xrange(ser_len)] #trim junk
  
  for j in xrange(ser_len): #for each HEADER-text
@@ -230,17 +235,34 @@ try:
 except Exception as e:
  timestamp("Error while connecting to serial: \n"+str(e)) 
  quit()
+ 
 while True: #just continue running
- tap1vorig, tap2vorig, tap3vorig, tap4vorig, dtap1vorig, dtap2vorig, dtap3vorig, dtap4vorig = database_read() #read all SQL-data
- ser_raw,ser_cor_list,ser_cor_t=serial_read() #Read all serial data
- if (ser_cor_t !=6 and len(ser_cor_list)!=0): #Correction factor has to be found or else we'll wait 
-  bierdata = serial_decode(ser_raw,ser_cor_list) #Plz decode the serial data to values
-  tap1,tap2,tap3,tap4,sub,totaal,dtap1,dtap2,dtap3,dtap4,dtotaal = prepare(bierdata) #plz prepare the data with previous data
-  check(tap1,tap2,tap3,tap4,sub,totaal,dtap1,dtap2,dtap3,dtap4,dtotaal) #check if values are "correct".
-
- waittime=(time_check-(ser_cor_t*time_sleep)) #Amount of time to wait between each check  
- print("--"+str(waittime)+"sec sleep --\n") #how long are you going to sleep.
- time.sleep(waittime)
+ try:
+  data = database_read() #read all SQL-data
+  if data[0]==False: #error in function?
+   ser_cor_t = 0
+   break
+  else: tap1vorig, tap2vorig, tap3vorig, tap4vorig, dtap1vorig, dtap2vorig, dtap3vorig, dtap4vorig = data[1] #normal execution
+  
+  data = serial_read() #Read all serial data
+  if data[0]==False: #error in function?
+   ser_cor_t = 0
+   break
+  else: ser_raw,ser_cor_list,ser_cor_t = data[1] #normal execution
+  
+  if (ser_cor_t !=6 and len(ser_cor_list)!=0): #Correction factor has to be found or else we'll wait 
+   bierdata = serial_decode(ser_raw,ser_cor_list) #Plz decode the serial data to values
+   tap1,tap2,tap3,tap4,sub,totaal,dtap1,dtap2,dtap3,dtap4,dtotaal = prepare(bierdata) #plz prepare the data with previous data
+   check(tap1,tap2,tap3,tap4,sub,totaal,dtap1,dtap2,dtap3,dtap4,dtotaal) #check if values are "correct".
+   
+ except Exception as e:
+  print(str(e))
+  
+  
+ finally:
+  waittime=(time_check-(ser_cor_t*time_sleep)) #Amount of time to wait between each check  
+  print("--"+str(waittime)+"sec sleep --\n") #how long are you going to sleep.
+  time.sleep(waittime)
 
 
 # '\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\n\r\nAT+SCASTB:22\rt04\x02\xbf\x03E\t\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0
