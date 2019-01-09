@@ -64,3 +64,5 @@ target/
 #bierteller
 settings.cfg
 database.csv
+token.json
+credentials.json

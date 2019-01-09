@@ -1,6 +1,21 @@
+[databases]
+write_mysql=false
+write_csv=true
+write_gsheets=true
+read=csv
+#csv, gsheets, sql
 [mysqldb]
 host=
 port=
 username=
 password=
 database=
+[general]
+amount_tap=
+[debug]
+#NONE, DEBUG,INFO,WARNING,ERROR,CRITICAL
+console = WARNING
+log= INFO
+[gsheets]
+spreadsheet_id=
+range_name=
