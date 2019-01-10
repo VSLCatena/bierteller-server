@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 #
-# Version 2.4
+# Version 2.4c
 #
-#  Split functions to files, converted python2.7 to 3.x
+#  remove quit(), in class Serial, added buffer=None after decode
 #
 
 # ---------------
@@ -129,8 +129,7 @@ try:
         timestamp('Going to sleep until next minute')
         sleeper(60)
 
-except KeyboardInterrupt as e:
-    quit()
+
 except Exception as e:
     print(e)
  
