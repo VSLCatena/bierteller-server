@@ -16,25 +16,45 @@
   * sudo pip install mysqlclient (optional for mysql)
   * sudo pip install google-api-python-client oauth2client (optional for gsheets)
 * Fill in settings.cfg (example of default)
+
     [databases]
+
     write_mysql=false
+
     write_csv=true
+
     write_gsheets=false
+
     read=csv
+
     [mysqldb]
+
     host=
+
     port=0
+
     username=
+
     password=
+
     database=
+
     [general]
+
     amount_tap=4
+
     [debug]
+
     #NONE, DEBUG,INFO,WARNING,ERROR,CRITICAL
+
     console = WARNING
+
     log= INFO
+
     [gsheets]
+
     spreadsheet_id=
+
     range_name=
 
 * If you are using gsheets, get credentials for the API.
@@ -47,6 +67,7 @@
 
 ## Changelog:
 
+  * 2.5: Hourly upload added
   * 2.4c: Add buffer=None right after del buffer in function bt_serial/decode() 
   * 2.4b: Removed quit() after Exception has occured
   * 2.4: Rewritten code to Python3 and split modules.

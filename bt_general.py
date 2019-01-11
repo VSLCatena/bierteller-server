@@ -55,9 +55,15 @@ def print_values(d,version):
     elif version in ['csv','gsheets','mysql']:
         for k,v in d['tapvorig'].items():
             if k=='timestamp': continue
-            print('{:s}: {:f}L  ({:+f})'.format(k, Decimal(v) / Decimal(10),Decimal(d['dtapvorig']['d'+k])/Decimal(10)))    
-
+            print('{:s}: {:f}L  ({:+f})'.format(k, Decimal(v) / Decimal(10),Decimal(d['dtapvorig']['d'+k])/Decimal(10)))
             
+def is_hour():
+    timeleft=3600-(time.time()%3600)
+    if (timeleft<=60):
+        return True
+    else:
+        return False
+
             
 def is_consume(d=None):
     sum=0

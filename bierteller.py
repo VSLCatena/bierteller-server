@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 #
-# Version 2.4c
+# Version 2.5
 #
-#  remove quit(), in class Serial, added buffer=None after decode
+#  added hourly upload
 #
 
 # ---------------
@@ -116,7 +116,7 @@ try:
                 bierteller['dtap']['dtap' + str(k + 1)] = bierteller['tap']['tap' + str(k + 1)] - bierteller['tapvorig']['tapvorig' + str(k + 1)]
                 
             #write values to csv
-            if(is_consume(bierteller) or is_started==False):
+            if(is_consume(bierteller) or is_started==False or is_hour()==True):
                 simple_dict=csv_simplify_dict(bierteller)
                 if(settings['databases']['write_csv']): csv_write(simple_dict)
                 try:
