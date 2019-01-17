@@ -18,7 +18,7 @@ from decimal import *
 
 
 
-def timestamp(string='',level=None, epoch=False):
+def timestamp(string='',level=None, type=None):
     """ 
     NUMBER Level	When it’s used
     0 DEBUG	Detailed information, typically of interest only when diagnosing problems.
@@ -28,12 +28,14 @@ def timestamp(string='',level=None, epoch=False):
     4 CRITICAL A serious error, indicating that the program itself may be unable to continue running.
     """
     ts = time.time()
-    if epoch==True:
+    if type=='epoch':
         st = str(ts)
+    elif type=='short':
+        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
     else:
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S:%f')
+    
     if string != '':
-        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S:%f')
         data = st + ' ' + str(string)
         print(data)
     if string == '':

@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 #
-# Version 2.5
+# Version 2.6
 #
-#  added hourly upload
+#  removed timestamp milliseconds when uploading to Gsheets by adding options in timestamp function
 #
 
 # ---------------

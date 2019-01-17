@@ -168,7 +168,7 @@ class Bierteller_serial(object):
             timestamp('[read]-> Reading buffer')
             while (linesize <= 4) and (i < max_retries):
                 self.buffer = self.con.readline()
-                self.bufferTimestamp = timestamp()
+                self.bufferTimestamp = timestamp(type='short')
                 linesize=len(self.buffer)
                 if (linesize <= 4):
                     time.sleep(2)
