@@ -166,12 +166,13 @@ class Bierteller_serial(object):
         i = 0
         try:
             timestamp('[read]-> Reading buffer')
-            while (linesize <= 30) and (i < max_retries):
-                self.buffer = self.con.readline()
+            while (linesize <= 50) and (i < max_retries):
+                lines = self.con.read(60)
+                raw_split_lines=lines.split(b"\r\n")
+                split_lines= list(filter(lambda x: len(x)>40,raw_split_lines))
+                self.buffer = split_lines[0]
                 self.bufferTimestamp = timestamp(type='short')
                 linesize=len(self.buffer)
-                if (linesize <= 4):
-                    time.sleep(2)
                 if (linesize >= 30):
                     break
             self.close()
