@@ -199,7 +199,9 @@ class Bierteller_serial(object):
             timestamp('[decode]-> Success.')
             del self.buffer
             self.buffer=None
+            return True
         except Exception as e:
             timestamp('[decode]->  Error while decoding: \n' + str(e))
             self.close(force=True)
             self.create()
+            return False
