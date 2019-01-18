@@ -109,21 +109,21 @@ try:
         #get new values
         s.check_buffer(True) #open port, flush/check buffer and immediatly read it.
         if(s.buffer!=None): 
-            s.decode() #decode binary data
-            for k in range(0, settings['general']['amount_tap']):
-                bierteller['tap']['tap' + str(k + 1)] = s.tapvalues[k]        
-                bierteller['tap']['timestamp']=s.bufferTimestamp
-                bierteller['dtap']['dtap' + str(k + 1)] = bierteller['tap']['tap' + str(k + 1)] - bierteller['tapvorig']['tapvorig' + str(k + 1)]
-                
-            #write values to csv
-            if(is_consume(bierteller) or is_started==False or is_hour()==True):
-                simple_dict=csv_simplify_dict(bierteller)
-                if(settings['databases']['write_csv']): csv_write(simple_dict)
-                try:
-                    if(settings['databases']['write_gsheets']): gsheets_basic(data=list(simple_dict.values()),action='write',cfg=settings['gsheets'])
-                except Exception as e:
-                    timestamp('Error. Ignoring it and retry later')
-            print_values(d=bierteller,version='serial')
+            if(s.decode()): #decode binary data
+                for k in range(0, settings['general']['amount_tap']):
+                    bierteller['tap']['tap' + str(k + 1)] = s.tapvalues[k]        
+                    bierteller['tap']['timestamp']=s.bufferTimestamp
+                    bierteller['dtap']['dtap' + str(k + 1)] = bierteller['tap']['tap' + str(k + 1)] - bierteller['tapvorig']['tapvorig' + str(k + 1)]
+                    
+                #write values to csv
+                if(is_consume(bierteller) or is_started==False or is_hour()==True):
+                    simple_dict=csv_simplify_dict(bierteller)
+                    if(settings['databases']['write_csv']): csv_write(simple_dict)
+                    try:
+                        if(settings['databases']['write_gsheets']): gsheets_basic(data=list(simple_dict.values()),action='write',cfg=settings['gsheets'])
+                    except Exception as e:
+                        timestamp('Error. Ignoring it and retry later')
+                print_values(d=bierteller,version='serial')
         is_started = True
         interval+=1
         timestamp('Going to sleep until next minute')
