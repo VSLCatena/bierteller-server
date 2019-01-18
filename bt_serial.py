@@ -140,7 +140,7 @@ class Bierteller_serial(object):
                 except Exception as e:
                     timestamp('[check_buffer]-> Error: '+str(e))
                     break
-                time.sleep(2)
+                time.sleep(3)
                 timestamp('[check_buffer]-> Status buffer: i:{}/{}, size:{}'.format(i,max_retries,buffersize))
 
             if (i >= max_retries) and (buffersize < 50):
@@ -166,16 +166,16 @@ class Bierteller_serial(object):
         i = 0
         try:
             timestamp('[read]-> Reading buffer')
-            while (linesize <= 4) and (i < max_retries):
+            while (linesize <= 30) and (i < max_retries):
                 self.buffer = self.con.readline()
                 self.bufferTimestamp = timestamp(type='short')
                 linesize=len(self.buffer)
                 if (linesize <= 4):
                     time.sleep(2)
-                if (linesize >= 4):
+                if (linesize >= 30):
                     break
             self.close()
-            if (linesize <4):
+            if (linesize <30):
                 timestamp('[read]-> Too many empty lines in buffer. Shutting down port. \n')
                 raise Exception
         except Exception as e:
