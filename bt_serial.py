@@ -143,7 +143,7 @@ class Bierteller_serial(object):
                 time.sleep(2)
                 timestamp('[check_buffer]-> Status buffer: i:{}/{}, size:{}'.format(i,max_retries,buffersize))
 
-            if (i >= max_retries) and (buffersize < 3):
+            if (i >= max_retries) and (buffersize < 50):
                 timestamp('[check_buffer]-> Error. Nothing found in buffer. Status:({},size:{}). Shutting down port.'.format(i,buffersize))
                 self.close()
             else:
