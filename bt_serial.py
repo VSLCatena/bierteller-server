@@ -201,3 +201,5 @@ class Bierteller_serial(object):
             self.buffer=None
         except Exception as e:
             timestamp('[decode]->  Error while decoding: \n' + str(e))
+            self.close(force=True)
+            self.create()
