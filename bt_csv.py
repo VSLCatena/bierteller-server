@@ -38,8 +38,12 @@ def csv_read(fieldnames=['timestamp','tap1','tap2','tap3','tap4','dtap1','dtap2'
             timestamp('[csv_read]-> Reading last row')
             for row in reader:
                 continue
-        row =  {k:int(row[k]) if isinstance(row[k],float) else row[k] for k in row.keys()}  #conversion of float to int
-        timestamp('[csv_read]-> Success.')
-        return row #last row        
+        try:
+            row =  {k:int(row[k]) if isinstance(row[k],float) else row[k] for k in row.keys()}  #conversion of float to int
+            timestamp('[csv_read]-> Success.')
+            return row #last row
+        except Exception as e:
+            timestamp('[csv_read]-> Error in reader Object: \n' + str(e))
+            return False
     except Exception as e:
         timestamp('[csv_read]-> Error reading rows: \n' + str(e))

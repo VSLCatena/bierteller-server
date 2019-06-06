@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 #
-# Version 2.6
+# Version 2.10
 #
-#  removed timestamp milliseconds when uploading to Gsheets by adding options in timestamp function
+#  fixed empty csv file initialization
 #
 
 # ---------------
@@ -103,8 +103,12 @@ try:
         if settings['databases']['read']=='mysql':
             old=sql_read()
         for k in range(0, settings['general']['amount_tap']):
-            bierteller['tapvorig']['tapvorig' + str(k + 1)] = old['tap'+str(k+1)] 
-            bierteller['dtapvorig']['dtapvorig' + str(k + 1)] = old['dtap'+str(k+1)] 
+            if old==False:
+                bierteller['tapvorig']['tapvorig' + str(k + 1)] =0
+                bierteller['dtapvorig']['dtapvorig' + str(k + 1)] =0
+            else:
+                bierteller['tapvorig']['tapvorig' + str(k + 1)] = old['tap'+str(k+1)] 
+                bierteller['dtapvorig']['dtapvorig' + str(k + 1)] = old['dtap'+str(k+1)] 
         print_values(d=bierteller,version='csv')      
         #get new values
         s.check_buffer(True) #open port, flush/check buffer and immediatly read it.
