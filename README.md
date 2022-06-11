@@ -14,7 +14,7 @@
   * sudo pip install pyserial (essential serial connection)
     * https://pythonhosted.org/pyserial/
   * sudo pip install mysqlclient (optional for mysql)
-  * sudo pip install google-api-python-client oauth2client (optional for gsheets)
+  * sudo pip install google-api-python-client oauth2client google-auth google-auth-oauthlib google-auth-httplib2 (optional for gsheets)
 * Fill in settings.cfg (example of default)
 
     [databases]
@@ -67,6 +67,7 @@
 
 ## Changelog:
 
+  * 3.0: Rewrite bt_gsheets.py due to changes in google api
   * 2.5: Hourly upload added
   * 2.4c: Add buffer=None right after del buffer in function bt_serial/decode() 
   * 2.4b: Removed quit() after Exception has occured

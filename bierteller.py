@@ -127,6 +127,7 @@ try:
                         if(settings['databases']['write_gsheets']): gsheets_basic(data=list(simple_dict.values()),action='write',cfg=settings['gsheets'])
                     except Exception as e:
                         timestamp('Error. Ignoring it and retry later')
+                        print(e)
                 print_values(d=bierteller,version='serial')
         is_started = True
         interval+=1
